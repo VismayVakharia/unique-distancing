@@ -2,6 +2,9 @@ var elem = document.getElementById('draw');
 var params = { type: Two.Types.svg, fullscreen: false, width: 700, height: 700 };
 var two = new Two(params).appendTo(elem);
 
+var params_ctrl = { type: Two.Types.svg, fullscreen: false, width: 400, height: 700 };
+var two_ctrl = new Two(params_ctrl).appendTo(document.getElementById('draw'));
+
 var grid_x = 6;  // number of rows
 var grid_y = 6;  // number of columns
 
@@ -92,25 +95,31 @@ function blockCells(flagHover=false) {
     return blockedCells;
 }
 
+function validateSelection() {
+    let l = selection.length;
+    let dists = Array();
+    for (let i=0; i < l; i++) {
+        for (let j=i+1; j < l; j++) {
+            let dist = distance(selection[i].id, selection[j].id, distanceType);
+            if (dists.includes(dist)) {
+                console.log("Conflict", selection[i], selection[j]);
+                return false;
+            } else {
+                dists.push(dist);
+            }
+        }
+    }
+    return true;
+}
+
 var styles = {
   alignment: "center",
   size: 20,
   family: "Lato"
 };
 
-$("input#rows.slider").click(function() {
-    grid_x = parseInt(this.value);
-    $("input#n_rows.show").val(grid_x);
-    renderScene();
-})
-$("input#cols.slider").click(function() {
-    grid_y = parseInt(this.value);
-    $("input#n_cols.show").val(grid_y);
-    renderScene();
-})
-
-var text2_rect, text3_rect, text4_rect, text5_rect;
-var text1, text2, text3, text4, text5;
+var text16_rect, text17_rect, text1_rect, text2_rect;
+var text15, text16, text17, text1, text2;
 var circArray = Array();
 var selection = Array();
 var distances = Array();
@@ -142,107 +151,10 @@ function renderScene() {
         }
     }
 
-    text2_rect = two.makeRoundedRectangle(140, 18, 95, 30, 5)
-    text3_rect = two.makeRoundedRectangle(250, 18, 105, 30, 5)
-    text4_rect = two.makeRoundedRectangle(500, 18, 95, 30, 5)
-    text5_rect = two.makeRoundedRectangle(600, 18, 95, 30, 5)
-    text2_rect.fill = (distanceType == "Euclidean") ? '#0366d6' : "#FFFFFF";
-    text3_rect.fill = (distanceType == "Euclidean") ? '#FFFFFF' : "#0366d6";
-    text4_rect.fill = '#FFFFFF';
-    text5_rect.fill = '#FF0000';
-    text2_rect.noStroke();
-    text3_rect.noStroke();
-
-    text1 = two.makeText("Distance: ", 40, 20, styles);
-    text2 = two.makeText("Euclidean", 140, 20, styles);
-    text3 = two.makeText("Manhattan", 250, 20, styles);
-    text4 = two.makeText("Clear", 500, 20, styles);
-    text5 = two.makeText("Reset", 600, 20, styles);
-    text5.weight = 800;
-    text2.fill = (distanceType == "Euclidean") ? "#FFFFFF" : "#000000";
-    text3.fill = (distanceType == "Euclidean") ? "#000000" : "#FFFFFF";
-    text4.fill = "#000000";
-    text5.fill = "#FFFFFF";
-
-    var buttonsTexts = ["text2", "text3", "text4", "text5"];
-    var buttonsRects = [text2_rect, text3_rect, text4_rect, text5_rect];
-
     offset = parseInt(circArray[0].id.slice(4)) - 1;
     console.log("offset", offset);
 
     two.update();
-
-    buttonsTexts.forEach(function(text, index) {
-        let rect = eval(text+"_rect");
-        $(eval(text)._renderer.elem)
-            .css('cursor', 'pointer')
-            .hover(function(e) {
-                rect.linewidth = 2;
-                rect.stroke = "#000000";
-            }, function(e) {
-                rect.linewidth = 1;
-                rect.stroke = (text.slice(4)<4) ? "#FFFFFF" : "#000000";
-            })
-        $(rect._renderer.elem)
-            .css('cursor', 'pointer')
-            .hover(function(e) {
-                rect.linewidth = 2;
-                rect.stroke = "#000000";
-            }, function(e) {
-                rect.linewidth = 1;
-                rect.stroke = (text.slice(4)<4) ? "#FFFFFF" : "#000000";
-            })
-    })
-    $(text2_rect._renderer.elem)
-        .click(function(e) {
-            distanceType = "Euclidean";
-            text2_rect.fill = '#0366d6';
-            text3_rect.fill = '#FFFFFF';
-            text2.fill = "#FFFFFF";
-            text3.fill = "#000000";
-            blockCells();
-            console.log("Distance type set to Euclidean");
-        })
-    $(text2._renderer.elem)
-        .click(function(e) {
-            distanceType = "Euclidean";
-            text2_rect.fill = '#0366d6';
-            text3_rect.fill = '#FFFFFF';
-            text2.fill = "#FFFFFF";
-            text3.fill = "#000000";
-            blockCells();
-            console.log("Distance type set to Euclidean");
-        })
-    $(text3._renderer.elem)
-        .click(function(e) {
-            distanceType = "Manhattan";
-            text2_rect.fill = '#FFFFFF';
-            text3_rect.fill = '#0366d6';
-            text2.fill = "#000000";
-            text3.fill = "#FFFFFF";
-            blockCells();
-            console.log("Distance type set to Manhattan");
-        })
-    $(text4._renderer.elem)
-        .click(function(e) {
-            renderScene()
-            console.log("Clearing!");
-        })
-    $(text4_rect._renderer.elem)
-        .click(function(e) {
-            renderScene()
-            console.log("Clearing!");
-        })
-    $(text5._renderer.elem)
-        .click(function(e) {
-            console.log("Resetting!");
-            location.reload();
-        })
-    $(text5_rect._renderer.elem)
-        .click(function(e) {
-            console.log("Resetting!");
-            location.reload();
-        })
 
     circArray.forEach(function(circ, index){
         // two.bind('update', function(frameCount, timeDelta) {
@@ -309,6 +221,273 @@ function renderScene() {
     blockCells();
 }
 
+function renderControls() {
+
+    text1_rect = two_ctrl.makeRoundedRectangle(50, 18, 95, 30, 5);
+    text2_rect = two_ctrl.makeRoundedRectangle(300, 18, 95, 30, 5);
+    text1_rect.fill = '#FFFFFF';
+    text2_rect.fill = '#FF0000';
+
+    text1 = two_ctrl.makeText("Clear", 50, 20, styles);
+    text2 = two_ctrl.makeText("Reset", 300, 20, styles);
+    text2.weight = 800;
+    text1.fill = "#000000";
+    text2.fill = "#FFFFFF";
+
+
+    text4_rect = two_ctrl.makeRoundedRectangle(95, 98, 70, 30, 5);
+    text5_rect = two_ctrl.makeRoundedRectangle(185, 98, 90, 30, 5);
+    text6_rect = two_ctrl.makeRoundedRectangle(295, 98, 110, 30, 5);
+    text4_rect.fill = '#0366d6';
+    text5_rect.fill = "#FFFFFF";
+    text6_rect.fill = "#FFFFFF";
+    text4_rect.noStroke();
+    text5_rect.noStroke();
+    text6_rect.noStroke();
+
+    text3 = two_ctrl.makeText("Style: ", 24, 100, styles);
+    text4 = two_ctrl.makeText("Circle", 95, 100, styles);
+    text5 = two_ctrl.makeText("Triangle", 185, 100, styles);
+    text6 = two_ctrl.makeText("Hexagonal", 295, 100, styles);
+    text4.fill = "#FFFFFF";
+    text5.fill = "#000000";
+    text6.fill = "#000000";
+
+
+    text8_rect = two_ctrl.makeRoundedRectangle(140, 148, 40, 30, 5);
+    text9_rect = two_ctrl.makeRoundedRectangle(200, 148, 50, 30, 5);
+    text10_rect = two_ctrl.makeRoundedRectangle(260, 148, 40, 30, 5);
+    text8_rect.fill = "#FFFFFF";
+    text9_rect.fill = "#0366d6";
+    text10_rect.fill = "#FFFFFF";
+    text8_rect.noStroke();
+    text9_rect.noStroke();
+    text10_rect.noStroke();
+
+    text7 = two_ctrl.makeText("No. of Rows: ", 55, 150, styles);
+    text8 = two_ctrl.makeText("<", 140, 150, styles);
+    text9 = two_ctrl.makeText("6", 200, 150, styles);
+    text10 = two_ctrl.makeText(">", 260, 150, styles);
+    text8.fill = "#000000";
+    text9.fill = "#FFFFFF";
+    text10.fill = "#000000";
+
+
+    text12_rect = two_ctrl.makeRoundedRectangle(140, 198, 40, 30, 5);
+    text13_rect = two_ctrl.makeRoundedRectangle(200, 198, 50, 30, 5);
+    text14_rect = two_ctrl.makeRoundedRectangle(260, 198, 40, 30, 5);
+    text12_rect.fill = "#FFFFFF";
+    text13_rect.fill = "#0366d6";
+    text14_rect.fill = "#FFFFFF";
+    text12_rect.noStroke();
+    text13_rect.noStroke();
+    text14_rect.noStroke();
+
+    text11 = two_ctrl.makeText("No. of Cols: ", 50, 200, styles);
+    text12 = two_ctrl.makeText("<", 140, 200, styles);
+    text13 = two_ctrl.makeText("6", 200, 200, styles);
+    text14 = two_ctrl.makeText(">", 260, 200, styles);
+    text12.fill = "#000000";
+    text13.fill = "#FFFFFF";
+    text14.fill = "#000000";
+
+
+    text16_rect = two_ctrl.makeRoundedRectangle(140, 248, 95, 30, 5);
+    text17_rect = two_ctrl.makeRoundedRectangle(250, 248, 105, 30, 5);
+    text16_rect.fill = (distanceType == "Euclidean") ? '#0366d6' : "#FFFFFF";
+    text17_rect.fill = (distanceType == "Euclidean") ? '#FFFFFF' : "#0366d6";
+    text16_rect.noStroke();
+    text17_rect.noStroke();
+
+    text15 = two_ctrl.makeText("Distance: ", 40, 250, styles);
+    text16 = two_ctrl.makeText("Euclidean", 140, 250, styles);
+    text17 = two_ctrl.makeText("Manhattan", 250, 250, styles);
+    text16.fill = (distanceType == "Euclidean") ? "#FFFFFF" : "#000000";
+    text17.fill = (distanceType == "Euclidean") ? "#000000" : "#FFFFFF";
+
+
+    text18_rect = two_ctrl.makeRoundedRectangle(50, 598, 95, 30, 5);
+    // text19_rect = two_ctrl.makeRoundedRectangle(160, 598, 105, 30, 5);
+    text18_rect.fill = "#04BF23";
+    // text19_rect.fill = "#FFFFFF";
+    text18_rect.noStroke();
+    // text19_rect.noStroke();
+
+    text18 = two_ctrl.makeText("Validate?", 50, 600, styles);
+    text19 = two_ctrl.makeText("", 160, 600, styles);
+    text18.fill = "#000000";
+    text19.fill = "#000000";
+    text19.weight = 800;
+
+    two_ctrl.update();
+
+    var buttonsTexts = ["text1", "text2", "text8", "text10", "text12",
+        "text14", "text16", "text17", "text18"];
+    // var buttonsTexts = ["text1", "text2", "text4", "text5", "text6", "text8",
+    //     "text10", "text12", "text14", "text16", "text17", "text18"];
+    buttonsTexts.forEach(function(text, index) {
+        let rect = eval(text+"_rect");
+        $(eval(text)._renderer.elem)
+            .css('cursor', 'pointer')
+            .hover(function(e) {
+                rect.linewidth = 2;
+                rect.stroke = "#000000";
+            }, function(e) {
+                if (text == "text1") {
+                    rect.linewidth = 1;
+                // } else if (text == "text18") {
+                //     text19.value = "";
+                } else {
+                    rect.noStroke();
+                }
+            })
+            .click(function(e) {
+                switch (text) {
+                    case "text1":
+                        renderScene();
+                        text19.value = "";
+                        console.log("Clearing!");
+                        break;
+                    case "text2":
+                        console.log("Resetting!");
+                        location.reload();
+                        break;
+                    case "text4":
+                        break;
+                    case "text5":
+                        break;
+                    case "text6":
+                        break;
+                    case "text8":
+                        grid_x = (grid_x > 2) ? grid_x-1: grid_x;
+                        text9.value = grid_x;
+                        renderScene();
+                        break;
+                    case "text10":
+                        grid_x = (grid_x < 10) ? grid_x+1: grid_x;
+                        text9.value = grid_x;
+                        renderScene();
+                        break;
+                    case "text12":
+                        grid_y = (grid_y > 2) ? grid_y-1: grid_y;
+                        text13.value = grid_y;
+                        renderScene();
+                        break;
+                    case "text14":
+                        grid_y = (grid_y < 10) ? grid_y+1: grid_y;
+                        text13.value = grid_y;
+                        renderScene();
+                        break;
+                    case "text16":
+                        distanceType = "Euclidean";
+                        text16_rect.fill = '#0366d6';
+                        text17_rect.fill = '#FFFFFF';
+                        text16.fill = "#FFFFFF";
+                        text17.fill = "#000000";
+                        blockCells();
+                        console.log("Distance type set to Euclidean");
+                        break;
+                    case "text17":
+                        distanceType = "Manhattan";
+                        text16_rect.fill = '#FFFFFF';
+                        text17_rect.fill = '#0366d6';
+                        text16.fill = "#000000";
+                        text17.fill = "#FFFFFF";
+                        blockCells();
+                        console.log("Distance type set to Manhattan");
+                        break;
+                    case "text18":
+                        if (validateSelection()) {
+                            text19.value = "Correct!";
+                            text19.fill = "green";
+                        } else {
+                            text19.value = "Conflict!";
+                            text19.fill = "red";
+                        }
+                }
+            })
+        $(rect._renderer.elem)
+            .css('cursor', 'pointer')
+            .hover(function(e) {
+                rect.linewidth = 2;
+                rect.stroke = "#000000";
+            }, function(e) {
+                if (text == "text1") {
+                    rect.linewidth = 1;
+                } else {
+                    rect.noStroke();
+                }
+            })
+            .click(function(e) {
+                switch (text) {
+                    case "text1":
+                        renderScene();
+                        text19.value = "";
+                        console.log("Clearing!");
+                        break;
+                    case "text2":
+                        console.log("Resetting!");
+                        location.reload();
+                        break;
+                    case "text4":
+                        break;
+                    case "text5":
+                        break;
+                    case "text6":
+                        break;
+                    case "text8":
+                        grid_x = (grid_x > 2) ? grid_x-1: grid_x;
+                        text9.value = grid_x;
+                        renderScene();
+                        break;
+                    case "text10":
+                        grid_x = (grid_x < 10) ? grid_x+1: grid_x;
+                        text9.value = grid_x;
+                        renderScene();
+                        break;
+                    case "text12":
+                        grid_y = (grid_y > 2) ? grid_y-1: grid_y;
+                        text13.value = grid_y;
+                        renderScene();
+                        break;
+                    case "text14":
+                        grid_y = (grid_y < 10) ? grid_y+1: grid_y;
+                        text13.value = grid_y;
+                        renderScene();
+                        break;
+                    case "text16":
+                        distanceType = "Euclidean";
+                        text16_rect.fill = '#0366d6';
+                        text17_rect.fill = '#FFFFFF';
+                        text16.fill = "#FFFFFF";
+                        text17.fill = "#000000";
+                        blockCells();
+                        console.log("Distance type set to Euclidean");
+                        break;
+                    case "text17":
+                        distanceType = "Manhattan";
+                        text16_rect.fill = '#FFFFFF';
+                        text17_rect.fill = '#0366d6';
+                        text16.fill = "#000000";
+                        text17.fill = "#FFFFFF";
+                        blockCells();
+                        console.log("Distance type set to Manhattan");
+                        break;
+                    case "text18":
+                        if (validateSelection()) {
+                            text19.value = "Correct!";
+                            text19.fill = "green";
+                        } else {
+                            text19.value = "Conflict!";
+                            text19.fill = "red";
+                        }
+                }
+            })
+    })
+}
+
 renderScene();
+renderControls();
 
 two.play();
+two_ctrl.play();
