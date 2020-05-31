@@ -235,23 +235,23 @@ function renderControls() {
     text2.fill = "#FFFFFF";
 
 
-    text4_rect = two_ctrl.makeRoundedRectangle(95, 98, 70, 30, 5);
-    text5_rect = two_ctrl.makeRoundedRectangle(185, 98, 90, 30, 5);
-    text6_rect = two_ctrl.makeRoundedRectangle(295, 98, 110, 30, 5);
+    text4_rect = two_ctrl.makeRoundedRectangle(110, 98, 100, 30, 5);
+    text5_rect = two_ctrl.makeRoundedRectangle(220, 98, 100, 30, 5);
+    // text6_rect = two_ctrl.makeRoundedRectangle(295, 98, 110, 30, 5);
     text4_rect.fill = '#0366d6';
     text5_rect.fill = "#FFFFFF";
-    text6_rect.fill = "#FFFFFF";
+    // text6_rect.fill = "#FFFFFF";
     text4_rect.noStroke();
     text5_rect.noStroke();
-    text6_rect.noStroke();
+    // text6_rect.noStroke();
 
-    text3 = two_ctrl.makeText("Style: ", 24, 100, styles);
-    text4 = two_ctrl.makeText("Circle", 95, 100, styles);
-    text5 = two_ctrl.makeText("Triangle", 185, 100, styles);
-    text6 = two_ctrl.makeText("Hexagonal", 295, 100, styles);
+    text3 = two_ctrl.makeText("Grid: ", 24, 100, styles);
+    text4 = two_ctrl.makeText("Cartesian", 110, 100, styles);
+    text5 = two_ctrl.makeText("Triangular", 220, 100, styles);
+    // text6 = two_ctrl.makeText("Hexagonal", 295, 100, styles);
     text4.fill = "#FFFFFF";
     text5.fill = "#000000";
-    text6.fill = "#000000";
+    // text6.fill = "#000000";
 
 
     text8_rect = two_ctrl.makeRoundedRectangle(140, 148, 40, 30, 5);
@@ -308,9 +308,9 @@ function renderControls() {
 
     text18_rect = two_ctrl.makeRoundedRectangle(50, 598, 95, 30, 5);
     // text19_rect = two_ctrl.makeRoundedRectangle(160, 598, 105, 30, 5);
-    text18_rect.fill = "#04BF23";
+    text18_rect.fill = "#FFFFFF";
     // text19_rect.fill = "#FFFFFF";
-    text18_rect.noStroke();
+    // text18_rect.noStroke();
     // text19_rect.noStroke();
 
     text18 = two_ctrl.makeText("Validate?", 50, 600, styles);
@@ -333,10 +333,8 @@ function renderControls() {
                 rect.linewidth = 2;
                 rect.stroke = "#000000";
             }, function(e) {
-                if (text == "text1") {
+                if (text == "text1" || text == "text18") {
                     rect.linewidth = 1;
-                // } else if (text == "text18") {
-                //     text19.value = "";
                 } else {
                     rect.noStroke();
                 }
@@ -404,6 +402,9 @@ function renderControls() {
                             text19.value = "Conflict!";
                             text19.fill = "red";
                         }
+                        window.setTimeout(function(e) {
+                            text19.value = "";
+                        }, 2000)
                 }
             })
         $(rect._renderer.elem)
@@ -412,7 +413,7 @@ function renderControls() {
                 rect.linewidth = 2;
                 rect.stroke = "#000000";
             }, function(e) {
-                if (text == "text1") {
+                if (text == "text1" || text == "text18") {
                     rect.linewidth = 1;
                 } else {
                     rect.noStroke();
@@ -481,6 +482,9 @@ function renderControls() {
                             text19.value = "Conflict!";
                             text19.fill = "red";
                         }
+                        window.setTimeout(function(e) {
+                            text19.value = "";
+                        }, 2000)
                 }
             })
     })
