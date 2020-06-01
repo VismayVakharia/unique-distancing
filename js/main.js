@@ -8,27 +8,59 @@ var two_ctrl = new Two(params_ctrl).appendTo(document.getElementById('draw'));
 var grid_x = 6;  // number of rows
 var grid_y = 6;  // number of columns
 
+var gridType = "Cartesian";
 var distanceType = "Euclidean";
+var arrangement = Array();
 
 var offset = 0;
 
 function indicesFromID(id_) {
     let id = parseInt(id_.slice(4)) - offset;
-    let quotient = Math.floor(id/grid_y);
-    let remainder = id % grid_y;
-    let x = (remainder != 0) ? quotient : quotient-1;
-    let y = (remainder != 0) ? remainder-1 : grid_y-1;
-    return [x ,y];
+    let row_index = 0;
+    while (id > arrangement[row_index]) {
+        id -= arrangement[row_index];
+        row_index++;
+    }
+    return [row_index, id-1];
 }
 
-function distance(id1, id2, disType) {
+function coordinatesFromIndices(indices, gridType_, disType) {
+    if (gridType_ == "Cartesian") {
+        return indices;
+    } else if (gridType_ == "Hexagonal") {
+        let h = (grid_x - 1)/2 - indices[0];
+        if (disType == "Euclidean") {
+            let num_shapes = grid_y - Math.abs(h);
+            let x = indices[1] - (num_shapes-1)/2;
+            let y = h * Math.sqrt(3) / 2;
+            return [x, y];
+        } else if (disType == "Manhattan") {
+            let num_shapes = grid_y - Math.abs(h);
+            let x = indices[1] - (num_shapes-1)/2 - h/2;
+            let y = h;
+            return [x, y];
+        } else {
+            return NaN;
+        }
+    } else {
+        return NaN;
+    }
+}
+
+function distance(id1, id2, gridType_, disType) {
     let x1, y1, x2, y2;
-    [x1, y1] = indicesFromID(id1);
-    [x2, y2] = indicesFromID(id2);
+    [x1, y1] = coordinatesFromIndices(indicesFromID(id1), gridType_, disType);
+    [x2, y2] = coordinatesFromIndices(indicesFromID(id2), gridType_, disType);
     if (disType == "Euclidean") {
         return Math.sqrt((x1-x2)**2 + (y1-y2)**2);
     } else if (disType == "Manhattan") {
-        return Math.abs(x1-x2) + Math.abs(y1-y2);
+        let dx = x2 - x1;
+        let dy = y2 - y1;
+        if (gridType_ == "Cartesian") {
+            return Math.abs(dx) + Math.abs(dy);
+        } else if (gridType_ == "Hexagonal") {
+            return (Math.sign(dx) == Math.sign(dy)) ? Math.abs(dx + dy): Math.max(Math.abs(dx), Math.abs(dy));
+        }
     } else {
         return NaN;
     }
@@ -41,7 +73,7 @@ function getDistNeighbors(id_, dist) {
     for (let i=0; i<grid_x; i++) {
         for (let j=0; j<grid_y; j++) {
             let curr_id = (i+1)*grid_y + j;
-            if (Math.abs(distance(id_, "two-"+curr_id, distanceType) - dist) < 1e-8) {
+            if (Math.abs(distance(id_, "two-"+curr_id, gridType, distanceType) - dist) < 1e-8) {
                 array.push(curr_id);
             }
         }
@@ -53,7 +85,7 @@ function updateDistances() {
     distances = Array();
     selection.forEach(function(cell1, index) {
         selection.forEach(function(cell2, index) {
-            let dist = distance(cell1.id, cell2.id, distanceType);
+            let dist = distance(cell1.id, cell2.id, gridType, distanceType);
             if (!distances.includes(dist) && dist != 0) {
                 distances.push(dist);
             }
@@ -64,34 +96,43 @@ function updateDistances() {
 function blockCells(flagHover=false) {
     updateDistances();
     blockedCells.splice(0, blockedCells.length);
-    for (let i=0; i<grid_x; i++) {
-        for (let j=0; j<grid_y; j++) {
-            symmetry_dists = Array();
-            let circ = circArray[i*grid_y+j];
-            if (flagHover) {
-                if (circ.fill == "#999999") {
-                    circ.fill = 'rgba(200, 200, 255, 0.2)';
-                }
-            } else {
-                if (circ.fill == "#000000" || circ.fill == "#999999") {
-                    circ.fill = 'rgba(200, 200, 255, 0.2)';
-                }
+    shapesArray.forEach(function(shape, index) {
+        symmetry_dists = Array();
+        if (flagHover) {
+            if (shape.fill == "#999999") {
+                shape.fill = 'rgba(200, 200, 255, 0.2)';
             }
-            selection.forEach(function(cell, index) {
-                let curr_dist;
-                curr_dist = distance(cell.id, circ.id, distanceType);
-                if (distances.includes(curr_dist) || symmetry_dists.includes(curr_dist)) {
-                    if (circ.fill == 'rgba(200, 200, 255, 0.2)') {
+        } else {
+            if (shape.fill == "#000000" || shape.fill == "#999999") {
+                shape.fill = 'rgba(200, 200, 255, 0.2)';
+            }
+        }
+        selection.forEach(function(cell, index) {
+            let curr_dist;
+            curr_dist = distance(cell.id, shape.id, gridType, distanceType);
+            distances.forEach(function(dist, index) {
+                if (Math.abs(curr_dist - dist) < 1e-8) {
+                    if (shape.fill == 'rgba(200, 200, 255, 0.2)') {
                         if (!flagHover) {
-                            circ.fill = "#000000";
+                            shape.fill = "#000000";
                         }
-                        blockedCells.push(circ);
+                        blockedCells.push(shape);
                     }
                 }
-                symmetry_dists.push(curr_dist);
             })
-        }
-    }
+            symmetry_dists.forEach(function(dist, index) {
+                if (Math.abs(curr_dist - dist) < 1e-8) {
+                    if (shape.fill == 'rgba(200, 200, 255, 0.2)') {
+                        if (!flagHover) {
+                            shape.fill = "#000000";
+                        }
+                        blockedCells.push(shape);
+                    }
+                }
+            })
+            symmetry_dists.push(curr_dist);
+        })
+    })
     return blockedCells;
 }
 
@@ -100,13 +141,14 @@ function validateSelection() {
     let dists = Array();
     for (let i=0; i < l; i++) {
         for (let j=i+1; j < l; j++) {
-            let dist = distance(selection[i].id, selection[j].id, distanceType);
-            if (dists.includes(dist)) {
-                console.log("Conflict", selection[i], selection[j]);
-                return false;
-            } else {
-                dists.push(dist);
+            let dist = distance(selection[i].id, selection[j].id, gridType, distanceType);
+            for (let k=0; k<dists.length; k++) {
+                if (Math.abs(dists[k] - dist) < 1e-8) {
+                    console.log("Conflict", selection[i], selection[j]);
+                    return false;
+                }
             }
+            dists.push(dist);
         }
     }
     return true;
@@ -120,7 +162,7 @@ var styles = {
 
 var text16_rect, text17_rect, text1_rect, text2_rect;
 var text15, text16, text17, text1, text2;
-var circArray = Array();
+var shapesArray = Array();
 var selection = Array();
 var distances = Array();
 var blockedCells = Array();
@@ -131,55 +173,60 @@ function renderScene() {
     var spacing_x = Math.floor(two.width/(grid_y + 1));
     var spacing_y = Math.floor(two.height/(grid_x + 1));
     var spacing = Math.min(spacing_x, spacing_y);
-    var x_offset = two.width/2 - spacing_x * (grid_y-1)/2;
-    var y_offset = two.height/2 - spacing_y * (grid_x-1)/2;
-    var radius = Math.floor(Math.min(spacing_x, spacing_y) * 0.4);
+    var y_offset = two.height/2 - spacing * (grid_x-1)/2;
+    var radius = Math.floor(spacing * 0.4);
 
-    circArray.splice(0, circArray.length);
+    arrangement.splice(0, arrangement.length);
+    shapesArray.splice(0, shapesArray.length);
     selection.splice(0, selection.length);
     distances.splice(0, distances.length);
 
     for (let i=0; i<grid_x; i++){
-        for (let j=0; j<grid_y; j++){
+        let h = (grid_x - 1)/2 - i;
+        let num_shapes = (gridType == "Cartesian") ? grid_y: grid_y - Math.abs(h);
+        for (let j=0; j<num_shapes; j++){
+            var x_offset = two.width/2 - spacing * (num_shapes-1)/2;
             let x = x_offset + spacing * j;
-            let y = y_offset + spacing * i;
-            circArray.push(two.makeCircle(x, y, radius));
-            let circ = circArray.slice(-1)[0];
-            circ.fill = 'rgba(200, 200, 255, 0.2)';
-            circ.linewidth = 1;
-            circ.stroke = '#1C75BC';
+            let y = (gridType == "Cartesian") ? y_offset + spacing * i: y_offset + spacing * i * Math.sqrt(3)/2;
+            let shape = two.makeCircle(x, y, radius);
+            shape.fill = 'rgba(200, 200, 255, 0.2)';
+            shape.linewidth = 1;
+            shape.stroke = '#1C75BC';
+            shape.rotation = (gridType == "Cartesian") ? 0: Math.PI/2;
+            shapesArray.push(shape);
         }
+        arrangement.push(num_shapes);
     }
 
-    offset = parseInt(circArray[0].id.slice(4)) - 1;
+    offset = parseInt(shapesArray[0].id.slice(4)) - 1;
     console.log("offset", offset);
 
     two.update();
 
-    circArray.forEach(function(circ, index){
+    shapesArray.forEach(function(shape, index){
         // two.bind('update', function(frameCount, timeDelta) {
-        //     circ.rotation = frameCount / 60;
+        //     shape.rotation = frameCount / 60;
         //   });
-        $(circ._renderer.elem)
+        $(shape._renderer.elem)
            .css('cursor', 'pointer')
            .hover(function(e) {
-               circ.linewidth = 2;
-               circ.stroke = "#000000";
-               if (circ.fill == 'rgba(200, 200, 255, 0.2)') {
-                   circ.fill = "#FFE86E";
-                   selection.push(circ);
+               shape.linewidth = 2;
+               shape.stroke = "#000000";
+               if (shape.fill == 'rgba(200, 200, 255, 0.2)') {
+                   shape.fill = "#FFE86E";
+                   selection.push(shape);
                    let cells = blockCells(true);
                    cells.forEach(function(cell, index) {
                        if (cell.fill != "#000000") {
                            cell.fill = "#999999";
                        }
                    })
-               } else if (circ.fill == "#FFD700") {
-                   circ.fill = 'rgba(200, 200, 255, 0.5)';
-                   let index = selection.indexOf(circ);
+               } else if (shape.fill == "#FFD700") {
+                   shape.fill = 'rgba(200, 200, 255, 0.5)';
+                   let index = selection.indexOf(shape);
                    if (index !== -1) selection.splice(index, 1);
                    blockCells();
-                   selection.push(circ);
+                   selection.push(shape);
                    let cells = blockCells(true);
                    cells.forEach(function(cell, index) {
                        if (cell.fill != "#000000") {
@@ -188,31 +235,31 @@ function renderScene() {
                    })
                }
            }, function(e) {
-               circ.linewidth = 1;
-               circ.stroke = "#1C75BC";
-               if (circ.fill == "#FFE86E") {
-                   circ.fill = 'rgba(200, 200, 255, 0.2)';
-                   let index = selection.indexOf(circ);
+               shape.linewidth = 1;
+               shape.stroke = "#1C75BC";
+               if (shape.fill == "#FFE86E") {
+                   shape.fill = 'rgba(200, 200, 255, 0.2)';
+                   let index = selection.indexOf(shape);
                    if (index !== -1) selection.splice(index, 1);
                    blockCells();
-               } else if (circ.fill == 'rgba(200, 200, 255, 0.5)') {
-                   circ.fill = "#FFD700";
+               } else if (shape.fill == 'rgba(200, 200, 255, 0.5)') {
+                   shape.fill = "#FFD700";
                    blockCells();
                }
            })
            .click(function(e) {
-               if (circ.fill == "#FFE86E") {
-                   circ.fill = "#FFD700";
-                   // selection.push(circ);
+               if (shape.fill == "#FFE86E") {
+                   shape.fill = "#FFD700";
+                   // selection.push(shape);
                    blockCells();
-                   console.log(circ.id, "selected");
+                   console.log(shape.id, "selected");
                }
-               else if (circ.fill == 'rgba(200, 200, 255, 0.5)') {
-                   circ.fill = 'rgba(200, 200, 255, 0.2)';
-                   let index = selection.indexOf(circ);
+               else if (shape.fill == 'rgba(200, 200, 255, 0.5)') {
+                   shape.fill = 'rgba(200, 200, 255, 0.2)';
+                   let index = selection.indexOf(shape);
                    if (index !== -1) selection.splice(index, 1);
                    blockCells();
-                   console.log(circ.id, "deselected");
+                   console.log(shape.id, "deselected");
                }
                // two.update();
            });
@@ -224,12 +271,12 @@ function renderScene() {
 function renderControls() {
 
     text1_rect = two_ctrl.makeRoundedRectangle(50, 18, 95, 30, 5);
-    text2_rect = two_ctrl.makeRoundedRectangle(300, 18, 95, 30, 5);
+    text2_rect = two_ctrl.makeRoundedRectangle(250, 18, 95, 30, 5);
     text1_rect.fill = '#FFFFFF';
     text2_rect.fill = '#FF0000';
 
     text1 = two_ctrl.makeText("Clear", 50, 20, styles);
-    text2 = two_ctrl.makeText("Reset", 300, 20, styles);
+    text2 = two_ctrl.makeText("Reset", 250, 20, styles);
     text2.weight = 800;
     text1.fill = "#000000";
     text2.fill = "#FFFFFF";
@@ -245,18 +292,18 @@ function renderControls() {
     text5_rect.noStroke();
     // text6_rect.noStroke();
 
-    text3 = two_ctrl.makeText("Grid: ", 24, 100, styles);
+    text3 = two_ctrl.makeText("Grid: ", 21, 100, styles);
     text4 = two_ctrl.makeText("Cartesian", 110, 100, styles);
-    text5 = two_ctrl.makeText("Triangular", 220, 100, styles);
+    text5 = two_ctrl.makeText("Hexagonal", 220, 100, styles);
     // text6 = two_ctrl.makeText("Hexagonal", 295, 100, styles);
     text4.fill = "#FFFFFF";
     text5.fill = "#000000";
     // text6.fill = "#000000";
 
 
-    text8_rect = two_ctrl.makeRoundedRectangle(140, 148, 40, 30, 5);
-    text9_rect = two_ctrl.makeRoundedRectangle(200, 148, 50, 30, 5);
-    text10_rect = two_ctrl.makeRoundedRectangle(260, 148, 40, 30, 5);
+    text8_rect = two_ctrl.makeRoundedRectangle(120, 148, 40, 30, 5);
+    text9_rect = two_ctrl.makeRoundedRectangle(170, 148, 50, 30, 5);
+    text10_rect = two_ctrl.makeRoundedRectangle(220, 148, 40, 30, 5);
     text8_rect.fill = "#FFFFFF";
     text9_rect.fill = "#0366d6";
     text10_rect.fill = "#FFFFFF";
@@ -264,18 +311,18 @@ function renderControls() {
     text9_rect.noStroke();
     text10_rect.noStroke();
 
-    text7 = two_ctrl.makeText("No. of Rows: ", 55, 150, styles);
-    text8 = two_ctrl.makeText("<", 140, 150, styles);
-    text9 = two_ctrl.makeText("6", 200, 150, styles);
-    text10 = two_ctrl.makeText(">", 260, 150, styles);
+    text7 = two_ctrl.makeText("Rows: ", 24, 150, styles);
+    text8 = two_ctrl.makeText("<", 120, 150, styles);
+    text9 = two_ctrl.makeText("6", 170, 150, styles);
+    text10 = two_ctrl.makeText(">", 220, 150, styles);
     text8.fill = "#000000";
     text9.fill = "#FFFFFF";
     text10.fill = "#000000";
 
 
-    text12_rect = two_ctrl.makeRoundedRectangle(140, 198, 40, 30, 5);
-    text13_rect = two_ctrl.makeRoundedRectangle(200, 198, 50, 30, 5);
-    text14_rect = two_ctrl.makeRoundedRectangle(260, 198, 40, 30, 5);
+    text12_rect = two_ctrl.makeRoundedRectangle(120, 198, 40, 30, 5);
+    text13_rect = two_ctrl.makeRoundedRectangle(170, 198, 50, 30, 5);
+    text14_rect = two_ctrl.makeRoundedRectangle(220, 198, 40, 30, 5);
     text12_rect.fill = "#FFFFFF";
     text13_rect.fill = "#0366d6";
     text14_rect.fill = "#FFFFFF";
@@ -283,10 +330,10 @@ function renderControls() {
     text13_rect.noStroke();
     text14_rect.noStroke();
 
-    text11 = two_ctrl.makeText("No. of Cols: ", 50, 200, styles);
-    text12 = two_ctrl.makeText("<", 140, 200, styles);
-    text13 = two_ctrl.makeText("6", 200, 200, styles);
-    text14 = two_ctrl.makeText(">", 260, 200, styles);
+    text11 = two_ctrl.makeText("Columns: ", 40, 200, styles);
+    text12 = two_ctrl.makeText("<", 120, 200, styles);
+    text13 = two_ctrl.makeText("6", 170, 200, styles);
+    text14 = two_ctrl.makeText(">", 220, 200, styles);
     text12.fill = "#000000";
     text13.fill = "#FFFFFF";
     text14.fill = "#000000";
@@ -321,10 +368,8 @@ function renderControls() {
 
     two_ctrl.update();
 
-    var buttonsTexts = ["text1", "text2", "text8", "text10", "text12",
-        "text14", "text16", "text17", "text18"];
-    // var buttonsTexts = ["text1", "text2", "text4", "text5", "text6", "text8",
-    //     "text10", "text12", "text14", "text16", "text17", "text18"];
+    var buttonsTexts = ["text1", "text2", "text4", "text5", "text8",
+        "text10", "text12", "text14", "text16", "text17", "text18"];
     buttonsTexts.forEach(function(text, index) {
         let rect = eval(text+"_rect");
         $(eval(text)._renderer.elem)
@@ -351,28 +396,64 @@ function renderControls() {
                         location.reload();
                         break;
                     case "text4":
+                        gridType = "Cartesian";
+                        text4_rect.fill = '#0366d6';
+                        text5_rect.fill = '#FFFFFF';
+                        text4.fill = "#FFFFFF";
+                        text5.fill = "#000000";
+                        grid_x = 6;
+                        grid_y = 6;
+                        text9.value = grid_x;
+                        text13.value = grid_y;
+                        renderScene();
+                        console.log("Grid type set to Cartesian");
                         break;
                     case "text5":
+                        gridType = "Hexagonal";
+                        text5_rect.fill = '#0366d6';
+                        text4_rect.fill = '#FFFFFF';
+                        text5.fill = "#FFFFFF";
+                        text4.fill = "#000000";
+                        grid_x = 7;
+                        grid_y = 7;
+                        text9.value = grid_x;
+                        text13.value = grid_y;
+                        renderScene();
+                        console.log("Grid type set to Hexagonal");
                         break;
                     case "text6":
                         break;
                     case "text8":
-                        grid_x = (grid_x > 2) ? grid_x-1: grid_x;
+                        if (gridType == "Cartesian") {
+                            grid_x = (grid_x > 1) ? grid_x-1: grid_x;
+                        } else {
+                            grid_x = (grid_x > 2) ? grid_x-2: grid_x;
+                        }
                         text9.value = grid_x;
                         renderScene();
                         break;
                     case "text10":
-                        grid_x = (grid_x < 10) ? grid_x+1: grid_x;
+                        if (gridType == "Cartesian") {
+                            grid_x = (grid_x < 11) ? grid_x+1: grid_x;
+                        } else {
+                            max_row = Math.min(10, grid_y*2 - 1);
+                            grid_x = (grid_x < max_row) ? grid_x+2: grid_x;
+                        }
                         text9.value = grid_x;
                         renderScene();
                         break;
                     case "text12":
-                        grid_y = (grid_y > 2) ? grid_y-1: grid_y;
+                        if (gridType == "Cartesian") {
+                            grid_y = (grid_y > 1) ? grid_y-1: grid_y;
+                        } else {
+                            min_col = (grid_x+1) / 2;
+                            grid_y = (grid_y > min_col) ? grid_y-1: grid_y;
+                        }
                         text13.value = grid_y;
                         renderScene();
                         break;
                     case "text14":
-                        grid_y = (grid_y < 10) ? grid_y+1: grid_y;
+                        grid_y = (grid_y < 11) ? grid_y+1: grid_y;
                         text13.value = grid_y;
                         renderScene();
                         break;
@@ -431,28 +512,64 @@ function renderControls() {
                         location.reload();
                         break;
                     case "text4":
+                        gridType = "Cartesian";
+                        text4_rect.fill = '#0366d6';
+                        text5_rect.fill = '#FFFFFF';
+                        text4.fill = "#FFFFFF";
+                        text5.fill = "#000000";
+                        grid_x = 6;
+                        grid_y = 6;
+                        text9.value = grid_x;
+                        text13.value = grid_y;
+                        renderScene();
+                        console.log("Grid type set to Cartesian");
                         break;
                     case "text5":
+                        gridType = "Hexagonal";
+                        text5_rect.fill = '#0366d6';
+                        text4_rect.fill = '#FFFFFF';
+                        text5.fill = "#FFFFFF";
+                        text4.fill = "#000000";
+                        grid_x = 7;
+                        grid_y = 7;
+                        text9.value = grid_x;
+                        text13.value = grid_y;
+                        renderScene();
+                        console.log("Grid type set to Hexagonal");
                         break;
                     case "text6":
                         break;
                     case "text8":
-                        grid_x = (grid_x > 2) ? grid_x-1: grid_x;
+                        if (gridType == "Cartesian") {
+                            grid_x = (grid_x > 1) ? grid_x-1: grid_x;
+                        } else {
+                            grid_x = (grid_x > 2) ? grid_x-2: grid_x;
+                        }
                         text9.value = grid_x;
                         renderScene();
                         break;
                     case "text10":
-                        grid_x = (grid_x < 10) ? grid_x+1: grid_x;
+                        if (gridType == "Cartesian") {
+                            grid_x = (grid_x < 11) ? grid_x+1: grid_x;
+                        } else {
+                            max_row = Math.min(10, grid_y*2 - 1);
+                            grid_x = (grid_x < max_row) ? grid_x+2: grid_x;
+                        }
                         text9.value = grid_x;
                         renderScene();
                         break;
                     case "text12":
-                        grid_y = (grid_y > 2) ? grid_y-1: grid_y;
+                        if (gridType == "Cartesian") {
+                            grid_y = (grid_y > 1) ? grid_y-1: grid_y;
+                        } else {
+                            min_col = (grid_x+1) / 2;
+                            grid_y = (grid_y > min_col) ? grid_y-1: grid_y;
+                        }
                         text13.value = grid_y;
                         renderScene();
                         break;
                     case "text14":
-                        grid_y = (grid_y < 10) ? grid_y+1: grid_y;
+                        grid_y = (grid_y < 11) ? grid_y+1: grid_y;
                         text13.value = grid_y;
                         renderScene();
                         break;
