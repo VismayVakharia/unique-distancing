@@ -82,6 +82,35 @@ function distance(id1, id2, gridType_, disType) {
     }
 }
 
+function drawDistance(shape1, shape2, gridType_, distType_, color) {
+    let lines = Array();
+    let x1 = shape1.position.x;
+    let y1 = shape1.position.y;
+    let x2 = shape2.position.x;
+    let y2 = shape2.position.y;
+    if (distType_ == "Euclidean") {
+        lines.push(two.makeArrow((x1+x2)/2, (y1+y2)/2, x2, y2));
+        lines.push(two.makeArrow((x2+x1)/2, (y2+y1)/2, x1, y1));
+    } else if (distType_ == "Manhattan") {
+        if (gridType_ == "Cartesian") {
+            if (x1 == x2 || y1 == y2) {
+                lines.push(two.makeArrow((x1+x2)/2, (y1+y2)/2, x2, y2));
+                lines.push(two.makeArrow((x2+x1)/2, (y2+y1)/2, x1, y1));
+            } else {
+                lines.push(two.makeArrow(x2, y1, x1, y1));
+                lines.push(two.makeArrow(x2, y1, x2, y2));
+            }
+
+        }
+    }
+    lines.forEach(function(line) {
+        line.linewidth = 5;
+        line.stroke = color;
+        line.opacity = 0.5;
+    })
+    return lines;
+}
+
 function getDistNeighbors(id_, dist) {
     let x, y;
     [x, y] = indicesFromID(id);
@@ -158,13 +187,23 @@ function validateSelection() {
     for (let i=0; i < l; i++) {
         for (let j=i+1; j < l; j++) {
             let dist = distance(selection[i].id, selection[j].id, gridType, distanceType);
-            for (let k=0; k<dists.length; k++) {
-                if (Math.abs(dists[k] - dist) < 1e-8) {
+            for (other_dist in dists) {
+                if (Math.abs(other_dist - dist) < 1e-8) {
                     console.log("Conflict", selection[i], selection[j]);
+                    let lines = Array();
+                    lines = lines.concat(drawDistance(selection[i], selection[j], gridType, distanceType, "red"));
+                    let other1, other2;
+                    [other1, other2] = dists[other_dist];
+                    lines = lines.concat(drawDistance(other1, other2, gridType, distanceType, "green"));
+                    window.setTimeout(function(e) {
+                        for (line_index in lines) {
+                            two.remove(lines[line_index]);
+                        }
+                    }, 2000)
                     return false;
                 }
             }
-            dists.push(dist);
+            dists[dist] = [selection[i], selection[j]];
         }
     }
     return true;
