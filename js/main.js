@@ -24,6 +24,22 @@ function indicesFromID(id_) {
     return [row_index, id-1];
 }
 
+function getArrangement() {
+    let arr = Array()
+    for (let i=0; i<grid_x; i++){
+        let h = (grid_x - 1)/2 - i;
+        let num_shapes = (gridType == "Cartesian") ? grid_y: grid_y - Math.abs(h);
+        arr.push(num_shapes);
+    }
+    return arr;;
+}
+
+function idFromIndices(indices) {
+    let index = getArrangement().slice(0, indices[0]).reduce((a, b) => a + b, 0) + indices[1];
+    let id = "two-" + String(index + 1 + offset);
+    return [id, index];
+}
+
 function coordinatesFromIndices(indices, gridType_, disType) {
     if (gridType_ == "Cartesian") {
         return indices;
@@ -152,6 +168,53 @@ function validateSelection() {
         }
     }
     return true;
+}
+
+function getURL() {
+    var settings = "settings=";
+    settings += (gridType == "Cartesian") ? "0," : "1,";
+    settings += String(grid_x) + ",";
+    settings += String(grid_y) + ",";
+    settings += (distanceType == "Euclidean") ? "0" : "1";
+
+    var selectionString = "selection=";
+    for (let i=0; i < selection.length; i++) {
+        let x, y;
+        [x, y] = indicesFromID(selection[i].id);
+        selectionString += String(x) + "," + String(y) + ";";
+    }
+    return settings + "&" + selectionString.slice(0, selectionString.length-1);
+}
+
+function getQuery(key) {
+  var pat = new RegExp(key + "=([^&]+)");
+  var res = pat.exec(window.location.search);
+  return res ? res[1] : null;
+}
+
+function setURL() {
+    let settings = getQuery("settings").split(",").map(x=>parseInt(x));
+    gridType = (!settings[0]) ? "Cartesian": "Hexagonal";
+    grid_x = settings[1];
+    grid_y = settings[2];
+    distanceType = (!settings[3]) ? "Euclidean": "Manhattan";
+
+    renderScene();
+    renderControls();
+
+    let selectionString = getQuery("selection");
+
+    if (selectionString) {
+        selectionString.split(";").forEach(function(indices) {
+            let id, ix;
+            [id, ix] = idFromIndices(indices.split(",").map(x=>parseInt(x)));
+            cell = shapesArray[ix];
+            $(cell._renderer.elem).mouseover();
+            $(cell._renderer.elem).click();
+            $(cell._renderer.elem).mouseout();
+        });
+    }
+    return;
 }
 
 var styles = {
@@ -285,8 +348,8 @@ function renderControls() {
     text4_rect = two_ctrl.makeRoundedRectangle(110, 98, 100, 30, 5);
     text5_rect = two_ctrl.makeRoundedRectangle(220, 98, 100, 30, 5);
     // text6_rect = two_ctrl.makeRoundedRectangle(295, 98, 110, 30, 5);
-    text4_rect.fill = '#0366d6';
-    text5_rect.fill = "#FFFFFF";
+    text4_rect.fill = (gridType == "Cartesian") ? '#0366d6' : "#FFFFFF";
+    text5_rect.fill = (gridType == "Cartesian") ? '#FFFFFF' : "#0366d6";
     // text6_rect.fill = "#FFFFFF";
     text4_rect.noStroke();
     text5_rect.noStroke();
@@ -296,8 +359,8 @@ function renderControls() {
     text4 = two_ctrl.makeText("Cartesian", 110, 100, styles);
     text5 = two_ctrl.makeText("Hexagonal", 220, 100, styles);
     // text6 = two_ctrl.makeText("Hexagonal", 295, 100, styles);
-    text4.fill = "#FFFFFF";
-    text5.fill = "#000000";
+    text4.fill = (gridType == "Cartesian") ? "#FFFFFF" : "#000000";
+    text5.fill = (gridType == "Cartesian") ? "#000000" : "#FFFFFF";
     // text6.fill = "#000000";
 
 
@@ -313,7 +376,7 @@ function renderControls() {
 
     text7 = two_ctrl.makeText("Rows: ", 24, 150, styles);
     text8 = two_ctrl.makeText("<", 120, 150, styles);
-    text9 = two_ctrl.makeText("6", 170, 150, styles);
+    text9 = two_ctrl.makeText(String(grid_x), 170, 150, styles);
     text10 = two_ctrl.makeText(">", 220, 150, styles);
     text8.fill = "#000000";
     text9.fill = "#FFFFFF";
@@ -332,7 +395,7 @@ function renderControls() {
 
     text11 = two_ctrl.makeText("Columns: ", 40, 200, styles);
     text12 = two_ctrl.makeText("<", 120, 200, styles);
-    text13 = two_ctrl.makeText("6", 170, 200, styles);
+    text13 = two_ctrl.makeText(String(grid_y), 170, 200, styles);
     text14 = two_ctrl.makeText(">", 220, 200, styles);
     text12.fill = "#000000";
     text13.fill = "#FFFFFF";
@@ -353,23 +416,48 @@ function renderControls() {
     text17.fill = (distanceType == "Euclidean") ? "#000000" : "#FFFFFF";
 
 
-    text18_rect = two_ctrl.makeRoundedRectangle(50, 598, 95, 30, 5);
-    // text19_rect = two_ctrl.makeRoundedRectangle(160, 598, 105, 30, 5);
+    text18_rect = two_ctrl.makeRoundedRectangle(50, 548, 95, 30, 5);
+    // text19_rect = two_ctrl.makeRoundedRectangle(160, 548, 105, 30, 5);
     text18_rect.fill = "#FFFFFF";
     // text19_rect.fill = "#FFFFFF";
     // text18_rect.noStroke();
     // text19_rect.noStroke();
 
-    text18 = two_ctrl.makeText("Validate?", 50, 600, styles);
-    text19 = two_ctrl.makeText("", 160, 600, styles);
+    text18 = two_ctrl.makeText("Validate?", 50, 550, styles);
+    text19 = two_ctrl.makeText("", 160, 550, styles);
     text18.fill = "#000000";
     text19.fill = "#000000";
     text19.weight = 800;
 
+
+    text20_rect = two_ctrl.makeRoundedRectangle(50, 598, 95, 30, 5);
+    text20_rect.fill = "#FFFFFF";
+    // text20_rect.noStroke();
+
+    text20 = two_ctrl.makeText("Share", 50, 600, styles);
+    text21 = two_ctrl.makeText("", 120, 600, styles);
+    text20.fill = "#000000";
+    text21.fill = "#000000";
+    text21.weight = 800;
+    text21.alignment = "left";
+    text21.decoration = "underline";
+
+    text21_rect = two_ctrl.makeRoundedRectangle(260, 598, 300, 30, 5);
+    text21_rect.fill = "transparent";
+    text21_rect.noStroke();
+
+    text22_rect = two_ctrl.makeRoundedRectangle(250, 563, 105, 30, 15);
+    text22_rect.fill = "#BBBBBB";
+    text22_rect.noStroke();
+    text22 = two_ctrl.makeText("URL Copied!", 250, 565, {size: 15, family: "Lato"});
+    text22.fill = "#000000";
+    text22_rect.visible = false;
+    text22.visible = false;
+
     two_ctrl.update();
 
     var buttonsTexts = ["text1", "text2", "text4", "text5", "text8",
-        "text10", "text12", "text14", "text16", "text17", "text18"];
+        "text10", "text12", "text14", "text16", "text17", "text18", "text20"];
     buttonsTexts.forEach(function(text, index) {
         let rect = eval(text+"_rect");
         $(eval(text)._renderer.elem)
@@ -378,7 +466,7 @@ function renderControls() {
                 rect.linewidth = 2;
                 rect.stroke = "#000000";
             }, function(e) {
-                if (text == "text1" || text == "text18") {
+                if (text == "text1" || text == "text18" || text == "text20") {
                     rect.linewidth = 1;
                 } else {
                     rect.noStroke();
@@ -393,7 +481,7 @@ function renderControls() {
                         break;
                     case "text2":
                         console.log("Resetting!");
-                        location.reload();
+                        window.location.search = "";
                         break;
                     case "text4":
                         gridType = "Cartesian";
@@ -486,6 +574,20 @@ function renderControls() {
                         window.setTimeout(function(e) {
                             text19.value = "";
                         }, 2000)
+                        break;
+                    case "text20":
+                        text21.value = window.location.href.replace(/\?.*$/,'') + "?" + getURL();
+                        window.setTimeout(function(e) {
+                            text21._renderer.elem.selectSubString(0, this.length-1);
+                            document.execCommand("Copy");
+                        }, 100)
+                        text22_rect.visible = true;
+                        text22.visible = true;
+                        window.setTimeout(function(e) {
+                            text22_rect.visible = false;
+                            text22.visible = false;
+                        }, 1500)
+                        break;
                 }
             })
         $(rect._renderer.elem)
@@ -494,7 +596,7 @@ function renderControls() {
                 rect.linewidth = 2;
                 rect.stroke = "#000000";
             }, function(e) {
-                if (text == "text1" || text == "text18") {
+                if (text == "text1" || text == "text18" || text == "text20") {
                     rect.linewidth = 1;
                 } else {
                     rect.noStroke();
@@ -509,7 +611,7 @@ function renderControls() {
                         break;
                     case "text2":
                         console.log("Resetting!");
-                        location.reload();
+                        window.location.search = "";
                         break;
                     case "text4":
                         gridType = "Cartesian";
@@ -602,13 +704,31 @@ function renderControls() {
                         window.setTimeout(function(e) {
                             text19.value = "";
                         }, 2000)
+                        break;
+                    case "text20":
+                        text21.value = window.location.href.replace(/\?.*$/,'') + "?" + getURL();
+                        window.setTimeout(function(e) {
+                            text21._renderer.elem.selectSubString(0, this.length-1);
+                            document.execCommand("Copy");
+                        }, 100)
+                        text22_rect.visible = true;
+                        text22.visible = true;
+                        window.setTimeout(function(e) {
+                            text22_rect.visible = false;
+                            text22.visible = false;
+                        }, 1500)
+                        break;
                 }
             })
     })
 }
 
-renderScene();
-renderControls();
+if (window.location.search) {
+    setURL();
+} else {
+    renderScene();
+    renderControls();
+}
 
 two.play();
 two_ctrl.play();
