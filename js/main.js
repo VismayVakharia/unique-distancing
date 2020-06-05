@@ -269,6 +269,18 @@ var selection = Array();
 var distances = Array();
 var blockedCells = Array();
 
+function updateFavicon() {
+    // generate dom snapshot and set as favicon
+    opts = {bgcolor: "white", height: params.height, width: params.width}
+    domtoimage.toPng(document.getElementById("draw"), opts)
+        .then(function(dataUrl) {
+            $("#favicon").attr("href", dataUrl);
+        })
+        .catch(function (error) {
+            console.error('error while generating dom snapshot!', error);
+        });
+}
+
 function renderScene() {
     two.clear();
 
@@ -626,6 +638,7 @@ function renderControls() {
                             text22_rect.visible = false;
                             text22.visible = false;
                         }, 1500)
+                        updateFavicon();
                         break;
                 }
             })
@@ -756,6 +769,7 @@ function renderControls() {
                             text22_rect.visible = false;
                             text22.visible = false;
                         }, 1500)
+                        updateFavicon();
                         break;
                 }
             })
@@ -764,6 +778,7 @@ function renderControls() {
 
 if (window.location.search) {
     setURL();
+    updateFavicon();
 } else {
     renderScene();
     renderControls();
